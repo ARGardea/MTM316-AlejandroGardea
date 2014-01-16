@@ -42,7 +42,7 @@
 		}
 
 		public function loadXML() {
-			myLoader.load(new URLRequest("http://api.openweathermap.org/data/2.5/forecast/daily?q=" + processCityName(chosenCity) + "&mode=xml&units=imperial&cnt=7&nocache=" + new Date().time));
+			myLoader.load(new URLRequest("http://api.openweathermap.org/data/2.5/forecast/daily?q=" + chosenCity + "&mode=xml&units=imperial&cnt=7&nocache=" + new Date().time));
 		}
 
 		public function processCityName(target: String): String {
