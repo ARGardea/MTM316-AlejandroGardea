@@ -9,6 +9,10 @@
 		var myXML: XML;
 		var myLoader: URLLoader;
 		var weatherIcon: MovieClip;
+		
+		var draggedObject: MovieClip;
+		var offsetX: Number;
+		var offsetY: Number;
 
 		var mySharedObject: SharedObject;
 		var defaultCity: String = "New York City";
@@ -38,11 +42,35 @@
 			loadDictionaries();
 			myLoader.addEventListener(Event.COMPLETE, processXML);
 			loadXML();
-
+			
+			
 		}
 
 		public function loadXML() {
 			myLoader.load(new URLRequest("http://api.openweathermap.org/data/2.5/forecast/daily?q=" + chosenCity + "&mode=xml&units=imperial&cnt=7&nocache=" + new Date().time));
+		}
+		
+		
+		public function testDraggers(){
+			weatherClip[0].addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+			weatherClip[0].addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+		}
+		
+		public function startDragging(event:MouseEvent){
+			draggedObject = MovieClip(event.target);
+			offsetX = mouseX - draggedObject.x;
+			offsetY = mouseY - draggedObject.y;
+			weatherStage.addChild(draggedObject);
+			stage.addEventListener(MouseEvent.MOUSE_MOVE, dragClip);
+		}
+		
+		public function dragClip(event:MouseEvent){
+			draggedObject.x = mouseX - offsetX;
+			draggedObject.y = mouseY - offsetY;
+		}
+		
+		public function stopDragging(event:MouseEvent){
+			stage.removeEventListener(MouseEvent.MOUSE_MOVE, dragClip);
 		}
 
 		public function processCityName(target: String): String {
@@ -81,8 +109,8 @@
 		}
 
 		public function processInput(event: MouseEvent) {
-			if (weatherStage.CityTextBox.text != "") {
-				chosenCity = weatherStage.CityTextBox.text;
+			if (weatherStage.CityInput.inputBox.text != "") {
+				chosenCity = weatherStage.CityInput.inputBox.text;
 				loadXML();
 			}
 		}
@@ -145,7 +173,7 @@
 			weatherClip[6] = weatherStage.weather6;
 
 			weatherStage.Header.DisplayButton.addEventListener(MouseEvent.CLICK, clickHandler);
-			weatherStage.CityButton.addEventListener(MouseEvent.CLICK, processInput);
+			weatherStage.CityInput.button.addEventListener(MouseEvent.CLICK, processInput);
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyboardHandler);
 		}
 
@@ -155,7 +183,7 @@
 		
 		public function keyboardHandler(event: KeyboardEvent):void {
 			var test:int = 3;
-			if(event.ctrlKey){
+			if(event.altKey){
 				if(event.charCode == 109){
 					switchMode();
 				}
@@ -172,6 +200,8 @@
 
 		public function processXML(e: Event): void {
 			myXML = new XML(e.target.data);
+			
+			trace(myXML.*);
 
 			if (myXML.forecast.length() > 0) {
 				saveSharedObject();
@@ -199,7 +229,7 @@
 				5 = Thunderstorm
 			*/
 			isDisplayMode = false;
-			weatherStage.CityLabel.text = "Showing Forecast for: \n" + chosenCity;
+			weatherStage.CityLabel.text = "Showing Forecast for: \n" + myXML.location.name + ", " + myXML.location.country;
 
 			for (var j: int = 0; j < numDays; j += 1) {
 				var wID: int = weatherClip[j].Id;
