@@ -10,6 +10,12 @@
 		var myLoader: URLLoader;
 		var weatherIcon: MovieClip;
 		
+		var bigWeather: MovieClip;
+		
+		var centerFrameX: int;
+		var centerFrameY: int;
+		var bigWeatherScale: Number = .5;
+		
 		var draggedObject: MovieClip;
 		var offsetX: Number;
 		var offsetY: Number;
@@ -161,17 +167,24 @@
 			weatherStage = new Stage_MC;
 			weatherStage.x = 0;
 			weatherStage.y = 0;
+			
+			centerFrameX = weatherStage.width/2;
+			centerFrameY = weatherStage.height/2;
+			
 			addChild(weatherStage);
 
 			weatherClip[0] = weatherStage.weather0;
-			weatherClip[0].background.gotoAndStop(2);
 			weatherClip[1] = weatherStage.weather1;
 			weatherClip[2] = weatherStage.weather2;
 			weatherClip[3] = weatherStage.weather3;
 			weatherClip[4] = weatherStage.weather4;
 			weatherClip[5] = weatherStage.weather5;
 			weatherClip[6] = weatherStage.weather6;
-
+			
+			for(var i:int = 0; i < 7; i++){
+				weatherClip[i].addEventListener(MouseEvent.CLICK, weatherClickHandler);
+			}
+			
 			weatherStage.Header.DisplayButton.addEventListener(MouseEvent.CLICK, clickHandler);
 			weatherStage.CityInput.button.addEventListener(MouseEvent.CLICK, processInput);
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyboardHandler);
@@ -181,12 +194,63 @@
 			switchMode();
 		}
 		
+		public function bigWeatherExitHandler(event: MouseEvent){
+			weatherStage.removeChild(bigWeather);
+		}
+		
+		public function bigWeatherEnterHandler(e: Event){
+			if(bigWeather.y < centerFrameY){
+				bigWeather.y += 40;
+			}else if(bigWeather.y > centerFrameY){
+				bigWeather.y = centerFrameY;
+			}else{
+				bigWeather.gotoAndStop(bigWeather.storedFrame);
+				removeEventListener(Event.ENTER_FRAME, bigWeatherEnterHandler);
+			}
+		}
+		
+		public function weatherClickHandler(event: MouseEvent){
+			
+			var target:MovieClip = event.currentTarget as MovieClip;
+			
+			while(target.parent != weatherStage){
+				target = target.parent as MovieClip;
+			}
+			
+			if(weatherClip.indexOf(target) != -1){
+				bigWeather = new bigWeather_MC;
+				bigWeather.scaleX = bigWeatherScale;
+				bigWeather.scaleY = bigWeatherScale;
+				bigWeather.x = centerFrameX;
+				bigWeather.y = 0 - bigWeather.height/2;
+				
+				bigWeather.exitButton.addEventListener(MouseEvent.CLICK, bigWeatherExitHandler);
+				
+				bigWeather.storedFrame = target.currentFrame;
+				
+				bigWeather.theDate.text = target.theDate.text;
+				bigWeather.weather.text = target.weather.text;
+				bigWeather.high.text = target.high.text;
+				bigWeather.low.text = target.low.text;
+				bigWeather.windSpeed.text = target.WindSpeed;
+				bigWeather.windDirection.text = target.WindDirection;
+				bigWeather.humidity.text = target.Humidity;				
+				
+				weatherStage.addChild(bigWeather);
+				addEventListener(Event.ENTER_FRAME, bigWeatherEnterHandler);
+			}
+		}
+		
 		public function keyboardHandler(event: KeyboardEvent):void {
 			var test:int = 3;
 			if(event.ctrlKey){
 				if(event.charCode == 109){
 					switchMode();
 				}
+				/*if(event.charCode == 100){
+					mySharedObject.clear();
+					trace("Data Cleared");
+				}*/
 			}
 		}
 		
@@ -211,6 +275,9 @@
 					weatherClip[i].HighTemp = myXML.forecast.time[i].temperature.@max;
 					weatherClip[i].LowTemp = myXML.forecast.time[i].temperature.@min;
 					weatherClip[i].Forecast = myXML.forecast.time[i].symbol.@name;
+					weatherClip[i].WindSpeed = myXML.forecast.time[i].windSpeed.@mps + " mps";
+					weatherClip[i].WindDirection = myXML.forecast.time[i].windDirection.@name;
+					weatherClip[i].Humidity = myXML.forecast.time[i].humidity.@value + myXML.forecast.time[i].humidity.@unit;
 				}
 				lastCity = chosenCity;
 				ReadWeather();
