@@ -183,7 +183,7 @@
 		
 		public function keyboardHandler(event: KeyboardEvent):void {
 			var test:int = 3;
-			if(event.altKey){
+			if(event.ctrlKey){
 				if(event.charCode == 109){
 					switchMode();
 				}
