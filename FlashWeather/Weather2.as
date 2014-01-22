@@ -4,18 +4,19 @@
 	import flash.events.*;
 	import flash.net.*;
 	import flash.utils.Dictionary;
+	import flash.display.SimpleButton;
 
 	public class Weather2 extends MovieClip {
 		var myXML: XML;
 		var myLoader: URLLoader;
 		var weatherIcon: MovieClip;
-		
+
 		var bigWeather: MovieClip;
-		
+
 		var centerFrameX: int;
 		var centerFrameY: int;
 		var bigWeatherScale: Number = .5;
-		
+
 		var draggedObject: MovieClip;
 		var offsetX: Number;
 		var offsetY: Number;
@@ -48,34 +49,48 @@
 			loadDictionaries();
 			myLoader.addEventListener(Event.COMPLETE, processXML);
 			loadXML();
-			
-			
+
+
 		}
 
 		public function loadXML() {
 			myLoader.load(new URLRequest("http://api.openweathermap.org/data/2.5/forecast/daily?q=" + chosenCity + "&mode=xml&units=imperial&cnt=7&nocache=" + new Date().time));
 		}
-		
-		
-		public function testDraggers(){
-			weatherClip[0].addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
-			weatherClip[0].addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+
+
+		public function testDraggers() {
+			weatherClip[0].dragButton.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+			weatherClip[0].dragButton.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+
+
+			weatherClip[0].dragButton2.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+			weatherClip[0].dragButton2.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
 		}
-		
-		public function startDragging(event:MouseEvent){
-			draggedObject = MovieClip(event.target);
+
+		public function loadDraggers() {
+			for (var i: int = 0; i < 7; i++) {
+				weatherClip[i].dragButton.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+				weatherClip[i].dragButton.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+
+				weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+				weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+			}
+		}
+
+		public function startDragging(event: MouseEvent) {
+			var clickTarget = event.currentTarget as SimpleButton;
+			draggedObject = MovieClip(clickTarget.parent);
 			offsetX = mouseX - draggedObject.x;
 			offsetY = mouseY - draggedObject.y;
-			weatherStage.addChild(draggedObject);
 			stage.addEventListener(MouseEvent.MOUSE_MOVE, dragClip);
 		}
-		
-		public function dragClip(event:MouseEvent){
+
+		public function dragClip(event: MouseEvent) {
 			draggedObject.x = mouseX - offsetX;
 			draggedObject.y = mouseY - offsetY;
 		}
-		
-		public function stopDragging(event:MouseEvent){
+
+		public function stopDragging(event: MouseEvent) {
 			stage.removeEventListener(MouseEvent.MOUSE_MOVE, dragClip);
 		}
 
@@ -86,15 +101,15 @@
 				if (targetIndex == -2) {
 					targetIndex = target.indexOf(" ");
 				} else if (targetIndex != 0 && targetIndex != target.length - 1) {
-						var first: String = target.substr(0, targetIndex);
-						var second: String = target.substr(targetIndex + 1, target.length - 1);
+					var first: String = target.substr(0, targetIndex);
+					var second: String = target.substr(targetIndex + 1, target.length - 1);
 
 					if (target.charAt(targetIndex - 1) != '+') {
 						target = first + "+" + second;
 					} else {
 						target = first + second;
 					}
-						targetIndex = target.indexOf(" ");
+					targetIndex = target.indexOf(" ");
 
 
 				} else {
@@ -115,6 +130,10 @@
 		}
 
 		public function processInput(event: MouseEvent) {
+			readInput();
+		}
+
+		public function readInput() {
 			if (weatherStage.CityInput.inputBox.text != "") {
 				chosenCity = weatherStage.CityInput.inputBox.text;
 				loadXML();
@@ -167,10 +186,12 @@
 			weatherStage = new Stage_MC;
 			weatherStage.x = 0;
 			weatherStage.y = 0;
-			
-			centerFrameX = weatherStage.width/2;
-			centerFrameY = weatherStage.height/2;
-			
+
+			centerFrameX = weatherStage.width / 2;
+			centerFrameY = weatherStage.height / 2;
+
+			bigWeather = new bigWeather_MC;
+
 			addChild(weatherStage);
 
 			weatherClip[0] = weatherStage.weather0;
@@ -180,71 +201,86 @@
 			weatherClip[4] = weatherStage.weather4;
 			weatherClip[5] = weatherStage.weather5;
 			weatherClip[6] = weatherStage.weather6;
-			
-			for(var i:int = 0; i < 7; i++){
-				weatherClip[i].addEventListener(MouseEvent.CLICK, weatherClickHandler);
+
+			for (var i: int = 0; i < 7; i++) {
+				weatherClip[i].targetButton.addEventListener(MouseEvent.CLICK, weatherClickHandler);
 			}
-			
+
 			weatherStage.Header.DisplayButton.addEventListener(MouseEvent.CLICK, clickHandler);
+			weatherStage.Header.RefreshButton.addEventListener(MouseEvent.CLICK, refreshClickHandler);
 			weatherStage.CityInput.button.addEventListener(MouseEvent.CLICK, processInput);
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyboardHandler);
+
+			loadDraggers();
 		}
 
 		public function clickHandler(event: MouseEvent) {
 			switchMode();
 		}
-		
-		public function bigWeatherExitHandler(event: MouseEvent){
-			weatherStage.removeChild(bigWeather);
+
+		public function bigWeatherExitHandler(event: MouseEvent) {
+			clearBigWeather();
 		}
-		
-		public function bigWeatherEnterHandler(e: Event){
-			if(bigWeather.y < centerFrameY){
+
+		public function bigWeatherEnterHandler(e: Event) {
+			if (bigWeather.y < centerFrameY) {
 				bigWeather.y += 40;
-			}else if(bigWeather.y > centerFrameY){
+			} else if (bigWeather.y > centerFrameY) {
 				bigWeather.y = centerFrameY;
-			}else{
+			} else {
 				bigWeather.gotoAndStop(bigWeather.storedFrame);
 				removeEventListener(Event.ENTER_FRAME, bigWeatherEnterHandler);
 			}
 		}
-		
-		public function weatherClickHandler(event: MouseEvent){
-			
-			var target:MovieClip = event.currentTarget as MovieClip;
-			
-			while(target.parent != weatherStage){
+
+		public function weatherClickHandler(event: MouseEvent) {
+
+			var targetButton: SimpleButton = event.currentTarget as SimpleButton;
+			var target: MovieClip = targetButton.parent as MovieClip;
+
+			while (target.parent != weatherStage) {
 				target = target.parent as MovieClip;
 			}
-			
-			if(weatherClip.indexOf(target) != -1){
+
+			if (weatherClip.indexOf(target) != -1 && !weatherStage.contains(bigWeather)) {
+
 				bigWeather = new bigWeather_MC;
+
+				bigWeather.theDate.text = "";
+				bigWeather.high.text = "";
+				bigWeather.low.text = "";
+				bigWeather.windSpeed.text = "";
+				bigWeather.windDirection.text = "";
+				bigWeather.humidity.text = "";
+
 				bigWeather.scaleX = bigWeatherScale;
 				bigWeather.scaleY = bigWeatherScale;
 				bigWeather.x = centerFrameX;
-				bigWeather.y = 0 - bigWeather.height/2;
-				
+				bigWeather.y = 0 - bigWeather.height / 2;
+
 				bigWeather.exitButton.addEventListener(MouseEvent.CLICK, bigWeatherExitHandler);
-				
+
 				bigWeather.storedFrame = target.currentFrame;
-				
-				bigWeather.theDate.text = target.theDate.text;
+
 				bigWeather.weather.text = target.weather.text;
-				bigWeather.high.text = target.high.text;
-				bigWeather.low.text = target.low.text;
-				bigWeather.windSpeed.text = target.WindSpeed;
-				bigWeather.windDirection.text = target.WindDirection;
-				bigWeather.humidity.text = target.Humidity;				
-				
+				if (!isDisplayMode) {
+					bigWeather.theDate.text = target.theDate.text;
+					bigWeather.high.text = target.high.text;
+					bigWeather.low.text = target.low.text;
+					bigWeather.windSpeed.text = "Windspeed: " + target.WindSpeed;
+					bigWeather.windDirection.text = "Wind Direction: " + target.WindDirection;
+					bigWeather.humidity.text = "Humidity: " + target.Humidity;
+				}
+
 				weatherStage.addChild(bigWeather);
 				addEventListener(Event.ENTER_FRAME, bigWeatherEnterHandler);
 			}
 		}
-		
-		public function keyboardHandler(event: KeyboardEvent):void {
-			var test:int = 3;
-			if(event.ctrlKey){
-				if(event.charCode == 109){
+
+		public function keyboardHandler(event: KeyboardEvent): void {
+			var test: int = 3;
+			if (event.ctrlKey) {
+				if (event.charCode == 109) {
 					switchMode();
 				}
 				/*if(event.charCode == 100){
@@ -252,9 +288,20 @@
 					trace("Data Cleared");
 				}*/
 			}
+			if (event.charCode == 13) {
+				readInput();
+			}
 		}
-		
-		public function switchMode(){
+
+		public function clearBigWeather() {
+			if (weatherStage.contains(bigWeather)) {
+				weatherStage.removeChild(bigWeather);
+			}
+		}
+
+		public function switchMode() {
+			clearBigWeather();
+
 			if (isDisplayMode) {
 				ReadWeather();
 			} else {
@@ -262,10 +309,12 @@
 			}
 		}
 
+		public function refreshClickHandler(event: MouseEvent) {
+			loadXML();
+		}
+
 		public function processXML(e: Event): void {
 			myXML = new XML(e.target.data);
-			
-			trace(myXML.*);
 
 			if (myXML.forecast.length() > 0) {
 				saveSharedObject();
@@ -280,6 +329,7 @@
 					weatherClip[i].Humidity = myXML.forecast.time[i].humidity.@value + myXML.forecast.time[i].humidity.@unit;
 				}
 				lastCity = chosenCity;
+				clearBigWeather();
 				ReadWeather();
 			} else {
 				weatherStage.CityLabel.text = "That city name is invalid."
@@ -332,7 +382,7 @@
 				weatherClip[j].weather.text = forecastNames[j];
 				weatherClip[j].high.text = "";
 				weatherClip[j].low.text = "";
-				
+
 				weatherClip[j].gotoAndStop(j + 1);
 				weatherClip[j].forecast.gotoAndPlay(1);
 			}
