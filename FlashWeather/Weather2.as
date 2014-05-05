@@ -17,9 +17,15 @@
 		var centerFrameY: int;
 		var bigWeatherScale: Number = .5;
 
+		var resizedObject: MovieClip;
 		var draggedObject: MovieClip;
 		var offsetX: Number;
 		var offsetY: Number;
+
+		var defaultWeatherX: Array = [];
+		var defaultWeatherY: Array = [];
+		var defaultWeatherHeight: Array = [];
+		var defaultWeatherWidth: Array = [];
 
 		var mySharedObject: SharedObject;
 		var defaultCity: String = "New York City";
@@ -32,8 +38,8 @@
 		var days: Array = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 		var months: Array = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-
 		var weatherClip: Array = [];
+
 		var forecastNames: Array = ["Clear Skies", "Cloudy", "Raining", "Snowing", "Thunderstorm", "Fog", "Hail"];
 		var animDictionary;
 		var codeDictionary;
@@ -56,25 +62,58 @@
 		public function loadXML() {
 			myLoader.load(new URLRequest("http://api.openweathermap.org/data/2.5/forecast/daily?q=" + chosenCity + "&mode=xml&units=imperial&cnt=7&nocache=" + new Date().time));
 		}
-
-
-		public function testDraggers() {
-			weatherClip[0].dragButton.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
-			weatherClip[0].dragButton.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
-
-
-			weatherClip[0].dragButton2.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
-			weatherClip[0].dragButton2.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+		
+		public function loadResizers() {
+			for (var i: int = 0; i < numDays; i++){
+				weatherClip[i].dragButton.addEventListener(MouseEvent.MOUSE_DOWN, startResizing);
+				stage.addEventListener(MouseEvent.MOUSE_UP, stopResizing);
+			}
 		}
 
 		public function loadDraggers() {
-			for (var i: int = 0; i < 7; i++) {
-				weatherClip[i].dragButton.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
-				weatherClip[i].dragButton.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+			for (var i: int = 0; i < numDays; i++) {
+				weatherClip[i].moveButton.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+				weatherClip[i].moveButton.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
 
-				weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
-				weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
+				//weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_DOWN, startDragging);
+				//weatherClip[i].dragButton2.addEventListener(MouseEvent.MOUSE_UP, stopDragging);
 			}
+		}
+
+		public function startResizing(event: MouseEvent) {
+			trace("resize start!");
+			var clickTarget = event.currentTarget as SimpleButton;
+			resizedObject = MovieClip(clickTarget.parent);
+			offsetX = (resizedObject.width) - mouseX;
+			offsetY = (resizedObject.height) - mouseY;
+			stage.addEventListener(MouseEvent.MOUSE_MOVE, resizeClip);
+		}
+		
+		public function stopResizing(event: MouseEvent){
+			stage.removeEventListener(MouseEvent.MOUSE_MOVE, resizeClip);
+		}
+		
+		public function resizeClip(event: MouseEvent){
+			var heightDifference: Number = mouseY - (resizedObject.y + resizedObject.height);
+			var heightScale: Number = heightDifference / resizedObject.animBackground.height;
+			var widthDifference: Number = mouseX - (resizedObject.x + resizedObject.width);
+			var widthScale: Number = widthDifference / resizedObject.animBackground.width;
+			
+			// var heightDiff: Number = wantedHeight - tempClip.height;
+			// var scalePercent: Number = heightDiff / tempClip.height;
+			
+			var targetDifference: Number = heightDifference;
+			var targetScale: Number = heightScale;
+			
+			if(targetDifference < widthDifference){
+				targetDifference = widthDifference;
+				targetScale = widthScale;
+			}
+			trace("Height difference is " + heightDifference);
+			trace("Width difference is " + widthDifference);
+			trace("Target scale is " + targetScale);
+			resizedObject.height += (targetScale*resizedObject.animBackground.height);
+			resizedObject.width += (targetScale*resizedObject.animBackground.width);
 		}
 
 		public function startDragging(event: MouseEvent) {
@@ -90,8 +129,9 @@
 			draggedObject.y = mouseY - offsetY;
 		}
 
-		public function stopDragging(event: MouseEvent) {
+		public function stopDragging(e: MouseEvent) {
 			stage.removeEventListener(MouseEvent.MOUSE_MOVE, dragClip);
+			saveClipProperties();
 		}
 
 		public function processCityName(target: String): String {
@@ -182,10 +222,175 @@
 			animDictionary["Hail"] = 2;
 		}
 
+		public function generateClips() {
+			var dataFound: Boolean = (mySharedObject.data.defaultWeatherX != undefined);
+			if (dataFound) {
+				defaultWeatherX = mySharedObject.data.defaultWeatherX;
+				defaultWeatherY = mySharedObject.data.defaultWeatherY;
+				defaultWeatherHeight = mySharedObject.data.defaultWeatherHeight;
+				defaultWeatherWidth = mySharedObject.data.defaultWeatherWidth;
+			}
+			for (var i: int = 0; i < numDays; i++) {
+				weatherClip[i] = new Weather_Anim_MC();
+				var tempClip: MovieClip = weatherClip[i];
+				setClipPropertiesToDefault(i);
+				/*if(i == 0){
+					var wantedHeight: Number = weatherStage.height/2;
+					var heightDiff: Number = wantedHeight - tempClip.height;
+					var scalePercent: Number = heightDiff/tempClip.height;
+					tempClip.scaleX += scalePercent;
+					tempClip.scaleY += scalePercent;
+					tempClip.x = (weatherStage.width/2) - (tempClip.width/2);
+					tempClip.y = wantedHeight - ((tempClip.height/6)*5);
+				}else{
+					var wantedWidth: Number = weatherStage.width/(numDays);
+					var widthPercent: Number = wantedWidth/tempClip.width;
+					tempClip.scaleX = widthPercent;
+					tempClip.scaleY = widthPercent;
+					tempClip.y = weatherStage.height - tempClip.height;
+					tempClip.x = (wantedWidth*i) - tempClip.height/2 + ((tempClip.height/20)*i);
+				}*/
+				if (dataFound) {
+					loadClipPropertiesByIndex(i);
+				}
+				weatherStage.addChild(tempClip);
+			}
+		}
+		
+		public function resetClipProperties(){
+			stage.removeEventListener(MouseEvent.MOUSE_UP, stopResizing);
+			for (var j: int = 0; j < numDays; j++){
+				weatherStage.removeChild(weatherClip[j]);
+			}
+			for (var i: int = 0; i < numDays; i++) {
+				weatherClip[i] = new Weather_Anim_MC();
+				var tempClip: MovieClip = weatherClip[i];
+				setClipPropertiesToDefault(i);
+				weatherStage.addChild(tempClip);
+			}
+			loadDraggers();
+			loadResizers();
+			this.rereadXML();
+		}
+
+		public function setClipPropertiesToDefault(i: int) {
+			var tempClip: MovieClip = weatherClip[i];
+			if (i == 0) {
+				var wantedHeight: Number = weatherStage.height / 2;
+				var heightDiff: Number = wantedHeight - tempClip.height;
+				var scalePercent: Number = heightDiff / tempClip.height;
+				trace("scalePercent is " + scalePercent);
+				trace(tempClip.height);
+				trace(tempClip.width);
+				tempClip.scaleX += scalePercent;
+				tempClip.scaleY += scalePercent;
+				trace(tempClip.height);
+				trace(tempClip.width);
+				/*if(scalePercent > 0){
+						tempClip.width *= scalePercent;
+						tempClip.height *= scalePercent;
+						trace("Percent is positive");
+					}else{
+						tempClip.width /= scalePercent;
+						tempClip.height /= scalePercent;
+						trace("Percent is negative");
+					}*/
+				//tempClip.scaleX += scalePercent;
+				//tempClip.scaleY += scalePercent;
+				tempClip.x = (weatherStage.width / 2) - (tempClip.width / 2);
+				tempClip.y = wantedHeight - ((tempClip.height / 6) * 5);
+			} else {
+				var wantedWidth: Number = weatherStage.width / (numDays);
+				var widthPercent: Number = wantedWidth / tempClip.width;
+				trace(tempClip.height);
+				trace(tempClip.width);
+				//tempClip.width *= widthPercent;
+				//tempClip.height *= widthPercent;
+				tempClip.scaleX = widthPercent;
+				tempClip.scaleY = widthPercent;
+				trace(tempClip.height);
+				trace(tempClip.width);
+				tempClip.y = weatherStage.height - tempClip.height;
+				tempClip.x = (wantedWidth * i) - tempClip.height / 2 + ((tempClip.height / 20) * i);
+			}
+		}
+
+		public function setDefaultClipProperties() {
+			for (var i: int = 0; i < numDays; i++) {
+				var tempClip: MovieClip = weatherClip[i];
+				if (i == 0) {
+					var wantedHeight: Number = weatherStage.height / 2;
+					var heightDiff: Number = wantedHeight - tempClip.height;
+					var scalePercent: Number = heightDiff / tempClip.height;
+					tempClip.scaleX += scalePercent;
+					tempClip.scaleY += scalePercent;
+					tempClip.x = (weatherStage.width / 2) - (tempClip.width / 2);
+					tempClip.y = wantedHeight - ((tempClip.height / 6) * 5);
+				} else {
+					var wantedWidth: Number = weatherStage.width / (numDays);
+					var widthPercent: Number = wantedWidth / tempClip.width;
+					tempClip.scaleX = widthPercent;
+					tempClip.scaleY = widthPercent;
+					tempClip.y = weatherStage.height - tempClip.height;
+					tempClip.x = (wantedWidth * i) - tempClip.height / 2 + ((tempClip.height / 20) * i);
+				}
+			}
+		}
+
+		public function loadClipPropertiesByIndex(i: int) {
+			var tempClip: MovieClip = weatherClip[i];
+			tempClip.x = defaultWeatherX[i];
+			tempClip.y = defaultWeatherY[i];
+			tempClip.height = defaultWeatherHeight[i];
+			tempClip.width = defaultWeatherWidth[i];
+			trace("Properties for clip " + i);
+			trace("X: " + tempClip.x);
+			trace("Y: " + tempClip.y);
+			trace("Height: " + tempClip.height);
+			trace("Width: " + tempClip.width);
+		}
+
+		public function loadClipProperties() {
+			defaultWeatherX = mySharedObject.data.defaultWeatherX;
+			defaultWeatherY = mySharedObject.data.defaultWeatherY;
+			defaultWeatherHeight = mySharedObject.data.defaultWeatherHeight;
+			defaultWeatherWidth = mySharedObject.data.defaultWeatherWidth;
+
+			for (var i: int = 0; i < numDays; i++) {
+				var tempClip: MovieClip = weatherClip[i];
+				tempClip.x = defaultWeatherX[i];
+				tempClip.y = defaultWeatherY[i];
+				tempClip.height = defaultWeatherHeight[i];
+				tempClip.width = defaultWeatherWidth[i];
+			}
+		}
+
+		public function saveClipProperties() {
+			for (var i: int = 0; i < numDays; i++) {
+				var tempClip: MovieClip = weatherClip[i];
+				defaultWeatherX[i] = tempClip.x
+				defaultWeatherY[i] = tempClip.y
+				defaultWeatherHeight[i] = tempClip.animBackground.height*tempClip.scaleY;
+				defaultWeatherWidth[i] = tempClip.animBackground.width*tempClip.scaleX;
+				trace("Saving Properties for clip " + i);
+				trace("X: " + tempClip.x);
+				trace("Y: " + tempClip.y);
+				trace("Height: " + tempClip.animBackground.height*tempClip.scaleY);
+				trace("Width: " + tempClip.animBackground.width*tempClip.scaleX);
+			}
+			mySharedObject.data.defaultWeatherX = defaultWeatherX;
+			mySharedObject.data.defaultWeatherY = defaultWeatherY;
+			mySharedObject.data.defaultWeatherHeight = defaultWeatherHeight;
+			mySharedObject.data.defaultWeatherWidth = defaultWeatherWidth;
+			mySharedObject.flush();
+		}
+
 		public function loadClips() {
 			weatherStage = new Stage_MC;
 			weatherStage.x = 0;
 			weatherStage.y = 0;
+
+
 
 			centerFrameX = weatherStage.width / 2;
 			centerFrameY = weatherStage.height / 2;
@@ -194,24 +399,33 @@
 
 			addChild(weatherStage);
 
-			weatherClip[0] = weatherStage.weather0;
+			generateClips();
+
+			/*weatherClip[0] = weatherStage.weather0;
 			weatherClip[1] = weatherStage.weather1;
 			weatherClip[2] = weatherStage.weather2;
 			weatherClip[3] = weatherStage.weather3;
 			weatherClip[4] = weatherStage.weather4;
 			weatherClip[5] = weatherStage.weather5;
-			weatherClip[6] = weatherStage.weather6;
+			weatherClip[6] = weatherStage.weather6;*/
 
 			for (var i: int = 0; i < 7; i++) {
+
 				weatherClip[i].targetButton.addEventListener(MouseEvent.CLICK, weatherClickHandler);
 			}
 
 			weatherStage.Header.DisplayButton.addEventListener(MouseEvent.CLICK, clickHandler);
 			weatherStage.Header.RefreshButton.addEventListener(MouseEvent.CLICK, refreshClickHandler);
+			weatherStage.Header.resetDimensionsButton.addEventListener(MouseEvent.CLICK, resetDimensionsHandler);
 			weatherStage.CityInput.button.addEventListener(MouseEvent.CLICK, processInput);
 			stage.addEventListener(KeyboardEvent.KEY_DOWN, keyboardHandler);
 
 			loadDraggers();
+			loadResizers();
+		}
+		
+		public function resetDimensionsHandler(e: MouseEvent){
+			resetClipProperties();
 		}
 
 		public function clickHandler(event: MouseEvent) {
@@ -282,6 +496,8 @@
 			if (event.ctrlKey) {
 				if (event.charCode == 109) {
 					switchMode();
+				} else if (event.charCode == 114) {
+					loadXML();
 				}
 				/*if(event.charCode == 100){
 					mySharedObject.clear();
@@ -316,6 +532,28 @@
 		public function processXML(e: Event): void {
 			myXML = new XML(e.target.data);
 
+			if (myXML.forecast.length() > 0) {
+				saveSharedObject();
+				for (var i: int = 0; i < numDays; i += 1) {
+					weatherClip[i].Id = myXML.forecast.time[i].symbol.@number;
+					weatherClip[i].Time = processDate(myXML.forecast.time[i].@day);
+					weatherClip[i].HighTemp = myXML.forecast.time[i].temperature.@max;
+					weatherClip[i].LowTemp = myXML.forecast.time[i].temperature.@min;
+					weatherClip[i].Forecast = myXML.forecast.time[i].symbol.@name;
+					weatherClip[i].WindSpeed = myXML.forecast.time[i].windSpeed.@mps + " mps";
+					weatherClip[i].WindDirection = myXML.forecast.time[i].windDirection.@name;
+					weatherClip[i].Humidity = myXML.forecast.time[i].humidity.@value + myXML.forecast.time[i].humidity.@unit;
+				}
+				lastCity = chosenCity;
+				clearBigWeather();
+				ReadWeather();
+			} else {
+				weatherStage.CityLabel.text = "That city name is invalid."
+				chosenCity = lastCity;
+			}
+		}
+		
+		public function rereadXML(){
 			if (myXML.forecast.length() > 0) {
 				saveSharedObject();
 				for (var i: int = 0; i < numDays; i += 1) {
@@ -378,6 +616,8 @@
 		public function ShowWeather() {
 			isDisplayMode = true;
 			for (var j: int = 0; j < numDays; j += 1) {
+				trace("weather clip " + j + " - X: " + weatherClip[j].x + ", Y: " + weatherClip[j].y);
+
 				weatherClip[j].theDate.text = "";
 				weatherClip[j].weather.text = forecastNames[j];
 				weatherClip[j].high.text = "";
